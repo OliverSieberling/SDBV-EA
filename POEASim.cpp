@@ -2,12 +2,12 @@
 
 using namespace std;
 
-vector<char> generateChild(vector<char>& par);
+vector<char> generateChild(vector<char>& par, bool isPess);
 
 int main()
 {
     // modify parameters here
-    int64_t numIter =5;
+    int64_t numIter =500;
     int64_t from = 20;
     int64_t to = 420;
     int64_t stepSize =20;
@@ -20,7 +20,7 @@ int main()
 
     ofstream outFile(filename);
     streambuf* coutBuffer = cout.rdbuf();
-   // cout.rdbuf(outFile.rdbuf());
+    //cout.rdbuf(outFile.rdbuf());
 
     cout << filename << endl;
 
@@ -50,7 +50,7 @@ int main()
 
                 while (parentZeroes > 0) {
                     generations++;
-                    vector<char> child = generateChild(parent);
+                    vector<char> child = generateChild(parent, j); // j=1 true, j=0 false
                     int64_t childZeroes = count(child.begin(), child.end(), 0);
                     bool childDominates = true;
                     bool parentDominates = true;
@@ -65,12 +65,7 @@ int main()
 
                     if (childDominates || (!parentDominates && childZeroes > parentZeroes)) {
                         parent = child;
-                        if (j == 0) { // PO-EA
-                            parentZeroes = count(parent.begin(), parent.end(), 0);
-                        }
-                        if (j == 1) { // pessimistic PO-EA
-                            parentZeroes = max(parentZeroes-1, count(parent.begin(), parent.end(), 0));
-                        }
+                        parentZeroes = count(parent.begin(), parent.end(), 0);
                     }
                 }
                 genSum += generations;
@@ -104,16 +99,28 @@ int main()
 }
 
 // returns a copy of the parent where each bit is flipped with probability 1/n
-vector<char> generateChild(vector<char>& par) {
-    vector<char> child(par.size());
+vector<char> generateChild(vector<char>& par, bool isPess) {
+    vector<char> child(par);
     random_device rd;
     mt19937 gen(rd());
+    bool zeroFlipSeen = false;
     uniform_int_distribution<int64_t> dist(0,par.size()-1);
     for (int64_t i = 0; i < par.size(); i++) {
-        if (dist(gen) == 0) {
-            child[i] = 1-par[i];
+        if (isPess) {
+            if (par[i] == 1) {
+                if (dist(gen) == 0) {
+                    child[i] = 1-par[i];
+                }
+            } else {
+                if (!zeroFlipSeen && dist(gen) == 0) {
+                    zeroFlipSeen = true;
+                    child[i] = 1-par[i];
+                }
+            }
         } else {
-            child[i] = par[i];
+            if (dist(gen) == 0) {
+                child[i] = 1-par[i];
+            }
         }
     }
     return child;
