@@ -27,7 +27,6 @@ int main()
 
     // name output file after parameter choices
     stringstream filenameStream;
-
     string isElitaryString;
     if (isElitary) {
         isElitaryString = "+";
@@ -42,6 +41,7 @@ int main()
     filenameStream << "_tries=" << numIter << "_nStart=" << from << "_nEnd=" << to << "_stepSize=" << stepSize << ".txt";
     string filename = filenameStream.str();
 
+    // redirect cout to output file
     ofstream outFile(filename);
     streambuf* coutBuffer = cout.rdbuf();
     cout.rdbuf(outFile.rdbuf());
@@ -69,9 +69,10 @@ int main()
                 return 0;
             }
 
+            vector<int64_t> weights = initWeights(functionType, n);
 
             for (int64_t itter = 0; itter < numIter; itter++) {
-
+                
                 // initialize parent
                 vector<char> parent(n);
                 random_device rd2;
@@ -91,14 +92,14 @@ int main()
                 int64_t totalChildren = 0;
                 random_device rd;
                 mt19937 gen(rd());
-                uniform_int_distribution<int64_t> dist(0, n-1); // 1/n probability
+                uniform_int_distribution<int64_t> dist(0, n-1); 
 
                 while (parentZeroes > 0) {
                     int64_t numChildren = round(numChildrenRaw);
                     totalChildren += numChildren;
                     generations++;
 
-                    // sort the parent for the dynamic BinVal functions. You can then evaluate all of them using BinVal.
+                    // Sort the parent for the dynamic BinVal functions. You can then evaluate all of them using BinVal.
                     if (functionType.substr(functionType.size()-2, 2) == "BV") {
                         if (functionType == "SDBV") {
                             if (parentZeroes < (long double)n/2) {
@@ -118,10 +119,9 @@ int main()
                         }
                     }
 
-                    vector<char> fittestChild(n, 0);
+                    vector<char> fittestChild = generateChild(parent);
 
-                    vector<int64_t> weights = initWeights(functionType, n);
-                    for (int64_t i = 0; i < numChildren; i++) {
+                    for (int64_t i = 0; i < numChildren-1; i++) {
                         vector<char> child = generateChild(parent);
 
                         if (isFitter(child, fittestChild, functionType, weights)) {
@@ -144,7 +144,7 @@ int main()
                     } else {
                         parent = fittestChild;
                     }
-                    parentZeroes = count(parent.begin(), parent.end(), false);
+                    parentZeroes = count(parent.begin(), parent.end(), 0);
                 }
                 genSum += generations;
                 childrenSum += totalChildren;
@@ -200,18 +200,17 @@ void sortDecreasingly(vector<char>& v) {
     }
 }
 
-// randomly permutes the bit string
+// randomly permutes the bitstring
 void permuteRandomly(vector<char>& v) {
-    // improve: use better random generator than rand()
     random_shuffle(v.begin(), v.end());
 }
 
-// returns true if and only if bit string v2 is lexicographically smaller than bit string v1
+// returns true if and only if bitstring v2 is lexicographically smaller than bitstring v1
 bool isFitterBV(vector<char>& v1, vector<char>& v2) {
     return lexicographical_compare(v2.begin(), v2.end(), v1.begin(), v1.end());
 }
 
-// checks if bit string v1 is fitter than bit string v2
+// checks if bitstring v1 is fitter than bitstring v2 
 bool isFitter(vector<char>& v1, vector<char>& v2, string functionType, vector<int64_t> weights) {
     if (functionType.substr(functionType.size()-2, 2) == "BV") {
         return isFitterBV(v1, v2);
@@ -248,7 +247,7 @@ vector<char> generateChild(vector<char>& par) {
 }
 
 
-// returns initialized weights depending on the function type; not for BinVal as weights would overflow
+// returns initialized weights depending on the function type; not for BinVal to prevent overflow
 vector<int64_t> initWeights(string functionType, int64_t n) {
     vector<int64_t> weights;
     if (functionType == "NLF") {
