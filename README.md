@@ -11,7 +11,7 @@ by M. Kaufmann, M. Larcher, J. Lengler, and O. Sieberling.
 ## Calculations
 - hitting_time_calculation.cpp: code used to generate the input for Wolfram Alpha to calculate exact hitting time for SDBV with a certain cutoff
 - modified_sdbv_even.ipynb: jupyter notebook to generate Figure 5.1 (thesis) / Figure 1 (paper)
-- modified_sdbv_odd.ipynb: jupyter notebook to generate Figure 5.2 (thesis) / Figure 1 (paper)
+- modified_sdbv_odd.ipynb: jupyter notebook to generate Figure 5.2 (thesis) / Figure 1 (paper) and Figure 5.3 (thesis) / Figure 2 (paper).
   
 ## Simulations
 - simulations.cpp: code used to generate output files in SimulationOutputFiles (all except PO-EA)
