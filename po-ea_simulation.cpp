@@ -7,7 +7,7 @@ vector<char> generateChild(vector<char>& par, bool isPess);
 int main()
 {
     // modify parameters here
-    int64_t numIter =500;
+    int64_t numIter = 500;
     int64_t from = 20;
     int64_t to = 420;
     int64_t stepSize =20;
@@ -20,15 +20,18 @@ int main()
 
     ofstream outFile(filename);
     streambuf* coutBuffer = cout.rdbuf();
-    //cout.rdbuf(outFile.rdbuf());
+    cout.rdbuf(outFile.rdbuf());
 
     cout << filename << endl;
 
     for (int j = 0; j < 2; j++) { // first iteration PO-EA, second iteration PO-EA^- (pessimistic)
-        vector<long double> avgGen, avgTotalChildren;
-        for (int64_t n = from; n <= to; n += stepSize) { // change n
-            //cout << n << endl;
-            long double genSum = 0;
+        if (j == 0) {
+            cout << "PO-EA" << endl;
+        } else {
+            cout << "PO-EA^- (pessimistic)" << endl;
+        }
+        for (int64_t n = from; n <= to; n += stepSize) {
+            cout << "n: " << n << endl;
             for (int64_t itter = 0; itter < numIter; itter++) {
 
                 // initialize parent
@@ -36,17 +39,12 @@ int main()
                 random_device rd2;
                 mt19937 gen2(rd2());
                 uniform_int_distribution<int64_t> dist2(0,1);
-                int64_t parentZeroes = 0;
                 for (int i = 0; i < n; i++) {
-                    if (dist2(gen2) == 0) {
-                        parentZeroes++;
-                        parent[i] = 0;
-                    } else {
-                        parent[i] = 1;
-                    }
+                    parent[i] = dist2(gen2);
                 }
+                int64_t parentZeroes = count(parent.begin(), parent.end(), 0);
 
-                int64_t generations = 0;
+                int64_t generations = 1;
 
                 while (parentZeroes > 0) {
                     generations++;
@@ -68,29 +66,10 @@ int main()
                         parentZeroes = count(parent.begin(), parent.end(), 0);
                     }
                 }
-                genSum += generations;
-            }
-            avgGen.push_back(genSum/numIter);
-        }
-        if (j == 0) {
-            cout << "PO-EA" << endl;
-        }
-        if (j == 1) {
-            cout << "PO-EA^- (pessimistic)" << endl;
-        }
-        cout << "average generations:" << endl;
-
-        for (int i = 0; i < avgGen.size(); i++) {
-            cout << avgGen[i];
-            if (i < avgGen.size()-1) {
-                cout << ", ";
+                cout << generations << "\n";
             }
         }
-        cout << endl << endl << endl;
-
     }
-
-
 
     outFile.close();
     cout.rdbuf(coutBuffer);
