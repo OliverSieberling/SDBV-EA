@@ -6,6 +6,7 @@ void sortIncreasingly(vector<char>& v);
 void sortDecreasingly(vector<char>& v);
 void permuteRandomly(vector<char>& v);
 bool isFitterBV(vector<char>& v1, vector<char>& v2);
+bool isAtLeastAsFit(vector<char>& v1, vector<char>& v2, string functionType, vector<int64_t> weights);
 bool isFitter(vector<char>& v1, vector<char>& v2, string functionType, vector<int64_t> weights);
 vector<char> generateChild(vector<char>& par);
 vector<int64_t> initWeights(string functionType, int64_t n);
@@ -13,17 +14,17 @@ vector<int64_t> initWeights(string functionType, int64_t n);
 int main()
 {
     // modify parameters here
-    int64_t numIter =500;
+    int64_t numIter = 500;
     vector<string> functionTypeV = {"SDBV", "ADBV", "FDBV", "DBV", "NLF", "OM"}; // which functions to benchmark: SDBV, ADBV, FDBV, DBV, OM, NLF (uniform weights 1 to n)
     bool isElitary = false;
-    bool selfAdjusting =  true;
+    bool selfAdjusting =  false;
     string lambda = "2log(n)"; // "1", "2log(n)", or "2sqrt(n)"
     long double F = 1.15;   // only for self adjusting
     long double s = 0.25;   // only for self adjusting
     int64_t from = 20; // smallest n to benchmark
     int64_t to = 420; // biggest n to benchmark
-    int64_t stepSize =20; // step size of n
-    
+    int64_t stepSize = 20; // step size of n
+
 
     // name output file after parameter choices
     stringstream filenameStream;
@@ -51,11 +52,8 @@ int main()
     for (string functionType: functionTypeV) {
         cout << functionType << endl;
 
-        vector<long double> avgGen, avgTotalChildren;
         for (int64_t n = from; n <= to; n += stepSize) { // change n
-
-            long double genSum = 0;
-            long double childrenSum = 0;
+            cout << "n: " << n << endl;
 
             long double numChildrenRaw;
             if (lambda == "1") {
@@ -72,34 +70,29 @@ int main()
             vector<int64_t> weights = initWeights(functionType, n);
 
             for (int64_t itter = 0; itter < numIter; itter++) {
-                
+
                 // initialize parent
                 vector<char> parent(n);
                 random_device rd2;
                 mt19937 gen2(rd2());
                 uniform_int_distribution<int64_t> dist2(0,1);
-                int64_t parentZeroes = 0;
                 for (int i = 0; i < n; i++) {
-                    if (dist2(gen2) == 0) {
-                        parentZeroes++;
-                        parent[i] = 0;
-                    } else {
-                        parent[i] = 1;
-                    }
+                    parent[i] = dist2(gen2);
                 }
+                int64_t parentZeroes = count(parent.begin(), parent.end(), 0);
 
-                int64_t generations = 0;
-                int64_t totalChildren = 0;
+                int64_t generations = 1;
+                int64_t totalChildren = 1;
                 random_device rd;
                 mt19937 gen(rd());
-                uniform_int_distribution<int64_t> dist(0, n-1); 
+                uniform_int_distribution<int64_t> dist(0, n-1);
 
                 while (parentZeroes > 0) {
                     int64_t numChildren = round(numChildrenRaw);
                     totalChildren += numChildren;
                     generations++;
 
-                    // Sort the parent for the dynamic BinVal functions. You can then evaluate all of them using BinVal.
+                    // sort the parent for the dynamic BinVal functions. You can then evaluate all of them using BinVal.
                     if (functionType.substr(functionType.size()-2, 2) == "BV") {
                         if (functionType == "SDBV") {
                             if (parentZeroes < (long double)n/2) {
@@ -124,7 +117,7 @@ int main()
                     for (int64_t i = 0; i < numChildren-1; i++) {
                         vector<char> child = generateChild(parent);
 
-                        if (isFitter(child, fittestChild, functionType, weights)) {
+                        if (isAtLeastAsFit(child, fittestChild, functionType, weights)) {
                             fittestChild = child;
                         }
                     }
@@ -138,7 +131,7 @@ int main()
                     }
 
                     if (isElitary) {
-                        if (isFitter(fittestChild, parent, functionType, weights)) {
+                        if (isAtLeastAsFit(fittestChild, parent, functionType, weights)) {
                             parent = fittestChild;
                         }
                     } else {
@@ -146,29 +139,9 @@ int main()
                     }
                     parentZeroes = count(parent.begin(), parent.end(), 0);
                 }
-                genSum += generations;
-                childrenSum += totalChildren;
-            }
-            avgGen.push_back(genSum/numIter);
-            avgTotalChildren.push_back(childrenSum/numIter);
-        }
-        cout << "average generations:" << endl;
-
-        for (int i = 0; i < avgGen.size(); i++) {
-            cout << avgGen[i];
-            if (i < avgGen.size()-1) {
-                cout << ", ";
+                cout << generations << " " << totalChildren << "\n";
             }
         }
-        cout << endl;
-        cout << "average total children: " << endl;
-        for (int i = 0; i < avgTotalChildren.size(); i++) {
-            cout << avgTotalChildren[i];
-            if (i < avgTotalChildren.size()-1) {
-                cout << ", ";
-            }
-        }
-        cout << endl << endl << endl;
     }
 
     outFile.close();
@@ -210,7 +183,26 @@ bool isFitterBV(vector<char>& v1, vector<char>& v2) {
     return lexicographical_compare(v2.begin(), v2.end(), v1.begin(), v1.end());
 }
 
-// checks if bitstring v1 is fitter than bitstring v2 
+// checks if bitstring v1 is at least as fit as bitstring v2
+bool isAtLeastAsFit(vector<char>& v1, vector<char>& v2, string functionType, vector<int64_t> weights) {
+    if (functionType.substr(functionType.size()-2, 2) == "BV") {
+        return isFitterBV(v1, v2); // both points equivalent in case of equal fitness
+    }
+    if (weights.size() == 0) {
+        cout << "Error: Invalid function type" << endl;
+        return false;
+    }
+
+    int64_t fitness1 = 0;
+    int64_t fitness2 = 0;
+    for (int64_t i = 0; i < v1.size(); i++) {
+        fitness1 += v1[i]*weights[i];
+        fitness2 += v2[i]*weights[i];
+    }
+    return fitness1 >= fitness2;
+}
+
+// checks if bitstring v1 is fitter than bitstring v2
 bool isFitter(vector<char>& v1, vector<char>& v2, string functionType, vector<int64_t> weights) {
     if (functionType.substr(functionType.size()-2, 2) == "BV") {
         return isFitterBV(v1, v2);
